@@ -23,6 +23,10 @@ style.appendChild(document.createTextNode(
 	height: 114px;
 }
 
+#toggles_container {
+	margin-top: 20px;
+}
+
 .x-scroller {
 	width: 100%;
 	height: 100%;
@@ -101,6 +105,10 @@ scrollerDiv.id = 'scroller_container';
 
 document.body.appendChild(scrollerDiv);
 
+let lineTogglesDiv = document.createElement('div');
+lineTogglesDiv.id = 'toggles_container';
+document.body.appendChild(lineTogglesDiv);
+
 let svgHelper = new SvgHelper();
 
 let chartLine = new ChartLine({
@@ -138,7 +146,9 @@ let lines = [];
 		}
 
 		lines.push({
+			id: key,
 			className: 'chart-line-' + i,
+			_name: data.names[key],
 			_color: data.colors[key],
 			points,
 		});
@@ -197,6 +207,30 @@ scroller.onShown();
 			points,
 			viewport,
 		});
+	});
+
+	lines.forEach(line => {
+		let lineId = line.id;
+
+		let label = document.createElement('label');
+
+		let checkbox = document.createElement('input');
+		checkbox.setAttribute('type', 'checkbox');
+		checkbox.checked = true;
+
+		checkbox.addEventListener('change', () => {
+			let toggle = checkbox.checked;
+
+			scroller.toggleLine(lineId, toggle);
+
+			line._chartLine.toggle(toggle);
+		});
+
+		label.appendChild(checkbox);
+
+		label.appendChild(document.createTextNode(' ' + line._name));
+
+		lineTogglesDiv.appendChild(label);
 	});
 }
 

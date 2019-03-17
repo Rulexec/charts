@@ -45,7 +45,7 @@ function Scroller(options) {
 
 	setupDragging();
 
-	let chartLines = [];
+	let previewLines = [];
 
 	let WIDTH;
 	let HEIGHT;
@@ -65,6 +65,39 @@ function Scroller(options) {
 		state = options;
 
 		if (isFinite(WIDTH)) updateState();
+	};
+
+	this.toggleLine = function(lineId, toggle) {
+		let line = previewLines.find(line => line.id === lineId);
+		if (!line) return;
+
+		line.chartLine.toggle(toggle);
+
+		let minY = Infinity;
+		let maxY = -Infinity;
+
+		previewLines.forEach(line => {
+			if (!line.chartLine.isShown()) return;
+
+			for (let { y } of line.chartLine.pointsIterator()) {
+				if (y < minY) minY = y;
+				if (y > maxY) maxY = y;
+			}
+		});
+
+		let yWidth = maxY - minY;
+		let fewPixelsGapY = (yWidth / HEIGHT) * 4;
+
+		previewLines.forEach(line => {
+			line.chartLine.moveViewport({
+				left: minX,
+				right: maxX,
+				bottom: minY - fewPixelsGapY,
+				top: maxY + fewPixelsGapY,
+			});
+		});
+
+		updateViewport();
 	};
 
 	this.onShown = function() {
@@ -101,7 +134,7 @@ function Scroller(options) {
 
 		let generalizedPoints = [];
 
-		lines.forEach(({ className, points }) => {
+		lines.forEach(({ id, className, points }) => {
 			let chartLine = new ChartLine({
 				svg,
 				svgHelper,
@@ -112,7 +145,10 @@ function Scroller(options) {
 				className,
 			});
 
-			chartLines.push(chartLine);
+			previewLines.push({
+				id,
+				chartLine,
+			});
 
 			if (points.length > WIDTH / 2) {
 				let lineXWidth = points[points.length - 1].x - points[0].x;
@@ -143,7 +179,7 @@ function Scroller(options) {
 		let fewPixelsGapY = (yWidth / HEIGHT) * 4;
 
 		generalizedPoints.forEach((points, i) => {
-			let chartLine = chartLines[i];
+			let chartLine = previewLines[i].chartLine;
 
 			chartLine.setState({
 				points,
@@ -277,7 +313,10 @@ function Scroller(options) {
 		let top = -Infinity;
 		let bottom = Infinity;
 
-		state.lines.forEach(({ points }) => {
+		state.lines.forEach(({ points }, i) => {
+			let line = previewLines[i];
+			if (!line.chartLine.isShown()) return;
+
 			let leftIndex = binarySearch(points, ({ x }) => {
 				return left - x;
 			}, { insertPlace: true });

@@ -4,6 +4,7 @@ export default ChartLine;
 
 const VIEWPORT_ANIMATION_DURATION = 250;
 const POINTS_ANIMATION_DURATION = 250;
+const TOGGLE_ANIMATION_DURATION = 125;
 
 const ASSERTS = true;
 
@@ -26,6 +27,11 @@ function ChartLine(options) {
 	let viewport;
 
 	let animationRunning = false;
+
+	let animationToggleStartTime = 0;
+	let animationToggleOpacity = 1;
+	let animationToggleOldOpacity = 1;
+	let animationToggleNewOpacity = 1;
 
 	let animationViewportStartTime = 0;
 	let animationOldViewport = null;
@@ -177,6 +183,27 @@ function ChartLine(options) {
 			svgHelper.freeElement(lineEl);
 
 			lineEl = lineEl.nextElementSibling;
+		}
+	};
+
+	this.toggle = function(toggle) {
+		animationToggleStartTime = 0;
+		animationToggleOldOpacity = animationToggleOpacity;
+		animationToggleNewOpacity = toggle ? 1 : 0;
+
+		startAnimation();
+	};
+
+	this.isShown = function() {
+		// FIXME
+		return !!animationToggleNewOpacity;
+	};
+
+	this.pointsIterator = function*() {
+		for (let i = 1; i < linePoints.length - 1; i++) {
+			let point = linePoints[i].point;
+
+			yield point;
 		}
 	};
 
@@ -462,10 +489,15 @@ function ChartLine(options) {
 				}
 
 				requestAnimationFrame(time => {
-					pointsAnimation(time);
-					viewportAnimation(time);
+					let opts = {
+						needRedrawLines: false,
+					};
 
-					redrawLines();
+					pointsAnimation(time, opts);
+					viewportAnimation(time, opts);
+					toggleAnimation(time, opts);
+
+					if (opts.needRedrawLines) redrawLines();
 
 					loop(time);
 				});
@@ -481,12 +513,18 @@ function ChartLine(options) {
 				animationPointsStartTime = time;
 			}
 
-			let isAnimationGoing = !!animationViewportStartTime || !!animationPointsStartTime;
+			if (!animationToggleStartTime && animationToggleOpacity !== animationToggleNewOpacity) {
+				animationToggleStartTime = time;
+			}
+
+			let isAnimationGoing =
+				    !!animationViewportStartTime || !!animationPointsStartTime
+				 || !!animationToggleStartTime;
 
 			return !isAnimationGoing;
 		}
 
-		function pointsAnimation(time) {
+		function pointsAnimation(time, opts) {
 			if (!animationPointsStartTime) return;
 
 			let elapsed = time - animationPointsStartTime;
@@ -535,9 +573,11 @@ function ChartLine(options) {
 				needPointsAnimation = false;
 				animationPointsStartTime = 0;
 			}
+
+			opts.needRedrawLines = true;
 		}
 
-		function viewportAnimation(time) {
+		function viewportAnimation(time, opts) {
 			if (!animationViewportStartTime) return;
 
 			let { left: newLeft,
@@ -571,6 +611,30 @@ function ChartLine(options) {
 				viewport.right = oldRight + (newRight - oldRight) * t;
 				viewport.bottom = oldBottom + (newBottom - oldBottom) * t;
 				viewport.top = oldTop + (newTop - oldTop) * t;
+			}
+
+			opts.needRedrawLines = true;
+		}
+
+		function toggleAnimation(time) {
+			if (!animationToggleStartTime) return;
+
+			let elapsed = time - animationToggleStartTime;
+
+			if (elapsed >= TOGGLE_ANIMATION_DURATION) {
+				animationToggleOpacity = animationToggleNewOpacity;
+				animationToggleStartTime = 0;
+
+				g.style.opacity = animationToggleOpacity;
+			} else {
+				let t = elapsed / VIEWPORT_ANIMATION_DURATION;
+				t = t * (2 - t);
+
+				animationToggleOpacity = animationToggleOldOpacity + (animationToggleNewOpacity - animationToggleOldOpacity) * t;
+
+				let o = Math.round(animationToggleOpacity * 1000) / 1000;
+
+				g.style.opacity = o;
 			}
 		}
 	}
