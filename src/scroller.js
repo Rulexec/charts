@@ -1,10 +1,13 @@
 import ChartLine from './chart-line.js';
-import { generalizePoints } from '../src/points-generalization.js';
+import { generalizePoints } from './points-generalization.js';
+import { draggableElement } from './util.js';
 
 export default Scroller;
 
 function Scroller(options) {
-	let { svgHelper, } = options;
+	let { svgHelper,
+	      onViewportUpdate,
+	    } = options;
 
 	let element = document.createElement('div');
 	element.className = 'x-scroller';
@@ -23,11 +26,15 @@ function Scroller(options) {
 	element.appendChild(coverRight);
 
 	coverRight.style.left = '300px';
-	coverRight.style.width = '100px';
+	coverRight.style.right = '0';
 
 	let coverWindow = document.createElement('div');
 	coverWindow.className = 'window';
 	element.appendChild(coverWindow);
+
+	let windowX = 150;
+	let windowWidth = 150;
+	let maxWindowX;
 
 	coverWindow.style.left = '150px';
 	coverWindow.style.width = '150px';
@@ -35,6 +42,8 @@ function Scroller(options) {
 	let coverWindowMove = document.createElement('div');
 	coverWindowMove.className = 'move';
 	coverWindow.appendChild(coverWindowMove);
+
+	setupDragging();
 
 	let chartLines = [];
 
@@ -56,6 +65,8 @@ function Scroller(options) {
 
 		WIDTH = rect.width | 0;
 		HEIGHT = rect.height | 0;
+
+		maxWindowX = WIDTH - windowWidth;
 
 		svg.setAttribute('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
 
@@ -136,6 +147,52 @@ function Scroller(options) {
 					top: maxY + fewPixelsGapY,
 				},
 			});
+		});
+	}
+
+	function setupDragging() {
+		let dragWindow = null;
+
+		draggableElement({
+			element: coverWindowMove,
+			onStart(e) {
+				dragWindow = {
+					startX: e.pageX,
+					startWindowX: windowX,
+					endWindowX: windowX,
+					windowOffset: -(e.offsetX + 12),
+				};
+
+				document.body.classList.add('x-cursor-grabbing');
+			},
+			onMove(e) {
+				if (!dragWindow) return;
+
+				let diff = e.pageX - dragWindow.startX;
+
+				let newWindowX = dragWindow.startWindowX + diff;
+
+				if (newWindowX < 0) newWindowX = 0;
+				else if (newWindowX > maxWindowX) newWindowX = maxWindowX;
+
+				newWindowX = newWindowX | 0;
+
+				dragWindow.endWindowX = newWindowX;
+
+				coverWindow.style.left = newWindowX + 'px';
+				coverLeft.style.width = newWindowX + 'px';
+
+				coverRight.style.left = ((newWindowX + windowWidth) | 0) + 'px';
+			},
+			onEnd(e, opts) {
+				if (!dragWindow) return;
+
+				windowX = dragWindow.endWindowX;
+
+				dragWindow = null;
+
+				document.body.classList.remove('x-cursor-grabbing');
+			},
 		});
 	}
 }

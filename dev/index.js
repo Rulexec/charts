@@ -78,6 +78,10 @@ svg .chart-line-g {
 	height: 100%;
 
 	cursor: grab;
+}
+
+body.x-cursor-grabbing * {
+	cursor: grabbing !important;
 }`;
 
 document.head.appendChild(style);
@@ -198,8 +202,6 @@ demo: {
 
 	setTimeout(() => {
 		let oldPoints = generalized.slice(start - 1, end + 1);
-
-		console.log(oldPoints, generalizedZ);
 
 		let { fromIndex: replacedFrom, toIndex: replacedTo } = chartLineG.replacePoints({
 			points: generalizedZ,

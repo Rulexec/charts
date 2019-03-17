@@ -395,8 +395,6 @@ function ChartLine(options) {
 			}
 		});
 
-		console.log(linePoints[toIndex]);
-
 		linePoints[toIndex + 1].leftLine = newLinePoints[newLinePoints.length - 1].rightLine;
 
 		{
