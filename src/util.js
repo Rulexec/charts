@@ -1,4 +1,4 @@
-export { binarySearch, draggableElement };
+export { binarySearch, draggableElement, createDebouncer };
 
 function binarySearch(list, comparator, options) {
 	if (!list.length) return (options && options.insertPlace) ? 0 : -1;
@@ -87,6 +87,60 @@ function draggableElement(options) {
 
 		onEnd(e, { isCancel: true });
 	}
+}
+
+function createDebouncer(TIME) {
+	let timeoutId;
+	let isRunning = false;
+	let lastFinishTime = 0;
+	let fun;
+
+	return function(f) {
+		if (!f) {
+			// cancel execution
+			fun = null;
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+				timeoutId = null;
+			}
+			return;
+		}
+
+		if (isRunning) {
+			fun = f;
+			return;
+		}
+
+		fun = f;
+		run();
+
+		function run() {
+			isRunning = false;
+
+			if (!fun) return;
+
+			var diff = performance.now() - lastFinishTime;
+
+			if (!timeoutId) {
+				let waitTime = TIME - diff;
+				if (waitTime < 0) waitTime = 0;
+
+				timeoutId = setTimeout(function() {
+					timeoutId = null;
+
+					let oldFun = fun;
+					fun = null;
+
+					if (oldFun) {
+						isRunning = true;
+						oldFun();
+						lastFinishTime = performance.now();
+						run();
+					}
+				}, waitTime);
+			}
+		}
+	};
 }
 
 if (module.hot) module.hot.accept();

@@ -1,6 +1,6 @@
 import ChartLine from './chart-line.js';
 import { generalizePoints } from './points-generalization.js';
-import { draggableElement } from './util.js';
+import { draggableElement, createDebouncer, binarySearch } from './util.js';
 
 export default Scroller;
 
@@ -50,7 +50,12 @@ function Scroller(options) {
 	let WIDTH;
 	let HEIGHT;
 
+	let minX;
+	let maxX;
+
 	let state = null;
+
+	let viewportUpdateDebouncer = createDebouncer(100);
 
 	this.getElement = () => element;
 
@@ -79,8 +84,8 @@ function Scroller(options) {
 		      //,
 		    } = state;
 
-		let minX = Infinity;
-		let maxX = -Infinity;
+		minX = Infinity;
+		maxX = -Infinity;
 
 		lines.forEach(({ points }) => {
 			let leftX = points[0].x;
@@ -177,22 +182,54 @@ function Scroller(options) {
 
 				newWindowX = newWindowX | 0;
 
-				dragWindow.endWindowX = newWindowX;
+				windowX = newWindowX;
 
-				coverWindow.style.left = newWindowX + 'px';
-				coverLeft.style.width = newWindowX + 'px';
+				coverWindow.style.left = windowX + 'px';
+				coverLeft.style.width = windowX + 'px';
 
-				coverRight.style.left = ((newWindowX + windowWidth) | 0) + 'px';
+				coverRight.style.left = ((windowX + windowWidth) | 0) + 'px';
+
+				viewportUpdateDebouncer(updateViewport);
 			},
 			onEnd(e, opts) {
 				if (!dragWindow) return;
-
-				windowX = dragWindow.endWindowX;
 
 				dragWindow = null;
 
 				document.body.classList.remove('x-cursor-grabbing');
 			},
+		});
+	}
+
+	function updateViewport() {
+		let xWidth = maxX - minX;
+
+		let left = minX + (xWidth * (windowX / WIDTH));
+		let right = left + (xWidth * (windowWidth / WIDTH));
+
+		let top = -Infinity;
+		let bottom = Infinity;
+
+		state.lines.forEach(({ points }) => {
+			let leftIndex = binarySearch(points, ({ x }) => {
+				return left - x;
+			}, { insertPlace: true });
+
+			let rightIndex = binarySearch(points, ({ x }) => {
+				return right - x;
+			}, { insertPlace: true });
+
+			for (let i = leftIndex; i < rightIndex; i++) {
+				let y = points[i].y;
+
+				if (y < bottom) bottom = y;
+				if (y > top) top = y;
+			}
+		});
+
+		onViewportUpdate({
+			left, right,
+			bottom, top,
 		});
 	}
 }

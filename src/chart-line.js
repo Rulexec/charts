@@ -440,6 +440,8 @@ function ChartLine(options) {
 		animationOldViewport = Object.assign({}, viewport);
 		animationNewViewport = Object.assign({}, newViewport);
 
+		animationViewportStartTime = 0;
+
 		startAnimation();
 	};
 
@@ -536,7 +538,7 @@ function ChartLine(options) {
 		}
 
 		function viewportAnimation(time) {
-			if (!animationNewViewport) return;
+			if (!animationViewportStartTime) return;
 
 			let { left: newLeft,
 			      right: newRight,
