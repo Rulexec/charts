@@ -3,8 +3,10 @@ import Scroller from '../src/scroller.js';
 import SvgHelper from '../src/svg-helper.js';
 import { generalizePoints } from '../src/points-generalization.js';
 
+import tgData from './chart_data.json';
+
 let style = document.createElement('style');
-style.innerHTML =
+style.appendChild(document.createTextNode(
 `#charts_container {
 	width: 400px;
 	height: 300px;
@@ -15,16 +17,8 @@ style.innerHTML =
 	height: 100%;
 }
 
-#charts_container > svg .chart-line {
-	stroke: red;
-}
-
-svg .chart-line-g {
-	stroke: green;
-	stroke-width: 2px;
-}
-
 #scroller_container {
+	margin-top: 20px;
 	max-width: 400px;
 	height: 114px;
 }
@@ -82,9 +76,12 @@ svg .chart-line-g {
 
 body.x-cursor-grabbing * {
 	cursor: grabbing !important;
-}`;
+}`));
 
 document.head.appendChild(style);
+
+let chartLinesStyle = document.createElement('style');
+document.head.appendChild(chartLinesStyle);
 
 let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 svg.setAttribute('viewBox', '0 0 400 300');
@@ -112,23 +109,96 @@ let chartLine = new ChartLine({
 	className: 'chart-line',
 });
 
-let points = [];
+let lines = [];
 
-for (let x = 0; x <= 142; x += 0.001) {
-	let y = 50 + Math.sin(8 * Math.PI * x / 142) * 30 + (0.5 - Math.random()) * 5;
+{
+	let data = tgData[4];
 
-	points.push({
-		x,
-		y,
+	let xColumn = data.columns[0];
+
+	let linesCount = data.columns.length - 1;
+	let xColumnLength = xColumn.length;
+
+	for (let i = 0; i < linesCount; i++) {
+		let yColumn = data.columns[i + 1];
+
+		let key = yColumn[0];
+
+		let points = [];
+
+		for (let j = 1; j < xColumnLength; j++) {
+			let x = xColumn[j];
+			let y = yColumn[j];
+
+			points.push({ x, y });
+		}
+
+		lines.push({
+			className: 'chart-line-' + i,
+			_color: data.colors[key],
+			points,
+		});
+	}
+}
+
+{
+	let style = lines.map(({ className, _color }) => {
+		let s = `svg .${className} {\n`;
+		s += `stroke: ${_color};\n`;
+		s += `stroke-width: 2px;\n`;
+		s += `}`;
+
+		return s;
+	}).join('\n');
+
+	chartLinesStyle.appendChild(document.createTextNode(style));
+}
+
+lines.forEach(line => {
+	line._chartLine = new ChartLine({
+		svg,
+		svgHelper,
+		viewBox: {
+			width: 400,
+			height: 300,
+		},
+		className: line.className,
+	});
+});
+
+let scroller = new Scroller({
+	svgHelper,
+	onViewportUpdate(viewport) {
+		lines.forEach(({ _chartLine }) => {
+			_chartLine.moveViewport(viewport);
+		});
+	},
+});
+
+scrollerDiv.appendChild(scroller.getElement());
+scroller.setState({
+	lines,
+});
+scroller.onShown();
+
+{
+	let viewport = scroller.getViewport();
+
+	lines.forEach(line => {
+		let { _chartLine,
+		      points,
+		    } = line;
+
+		_chartLine.setState({
+			points,
+			viewport,
+		});
 	});
 }
 
-let generalized = generalizePoints({
-	points,
-	step: 50 / 400 * 2,
-});
+//
 
-let chartLineG = new ChartLine({
+/*let chartLineG = new ChartLine({
 	svg,
 	svgHelper,
 	viewBox: {
@@ -139,31 +209,11 @@ let chartLineG = new ChartLine({
 });
 
 chartLineG.setState({
-	points: generalized,
+	points,
 	viewport: {
 		left: 0,
 		right: 142,
 		bottom: 0,
 		top: 100,
-		/*left: 55,
-		right: 70,
-		bottom: 28,
-		top: 50,*/
 	},
-});
-
-let scroller = new Scroller({
-	svgHelper,
-	onViewportUpdate(viewport) {
-		chartLineG.moveViewport(viewport);
-	},
-});
-
-scrollerDiv.appendChild(scroller.getElement());
-scroller.setState({
-	lines: [{
-		className: 'chart-line-g',
-		points,
-	}],
-});
-scroller.onShown();
+});*/

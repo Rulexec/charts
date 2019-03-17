@@ -59,6 +59,8 @@ function Scroller(options) {
 
 	this.getElement = () => element;
 
+	this.getViewport = getViewport;
+
 	this.setState = function(options) {
 		state = options;
 
@@ -202,6 +204,10 @@ function Scroller(options) {
 	}
 
 	function updateViewport() {
+		onViewportUpdate(getViewport());
+	}
+
+	function getViewport() {
 		let xWidth = maxX - minX;
 
 		let left = minX + (xWidth * (windowX / WIDTH));
@@ -227,9 +233,9 @@ function Scroller(options) {
 			}
 		});
 
-		onViewportUpdate({
+		return {
 			left, right,
 			bottom, top,
-		});
+		};
 	}
 }
