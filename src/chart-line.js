@@ -1,3 +1,5 @@
+import { binarySearch } from './util.js';
+
 export default ChartLine;
 
 const VIEWPORT_ANIMATION_DURATION = 500;
@@ -66,11 +68,10 @@ function ChartLine(options) {
 
 			for (let i = 0; i < points.length; i++) {
 				let point = points[i];
-				let { x } = point;
-				let y;
+				let { x, y } = point;
 
 				prevLinePoint = {
-					point,
+					point: { x, y },
 					leftLine: null,
 					rightLine: null,
 				};
@@ -134,7 +135,7 @@ function ChartLine(options) {
 			prevLinePoint.rightLine = line;
 
 			prevLinePoint = {
-				point,
+				point: { x, y },
 				leftLine: line,
 				rightLine: null,
 			};
@@ -148,9 +149,10 @@ function ChartLine(options) {
 			if (needBreak) {
 				for (let j = i + 1; j < points.length; j++) {
 					let point = points[j];
+					let { x, y } = point;
 
 					prevLinePoint = {
-						point,
+						point: { x, y },
 						leftLine: null,
 						rightLine: null,
 					};
@@ -185,8 +187,21 @@ function ChartLine(options) {
 		      toIndex,
 		    } = options;
 
-		fromIndex++;
-		toIndex++;
+		let leftX = points[0].x;
+		let leftIndex = binarySearch(linePoints, ({ point: { x } }) => {
+			return leftX - x;
+		}, { insertPlace: true });
+
+		let rightX = points[points.length - 1].x;
+		let rightIndex = binarySearch(linePoints, ({ point: { x } }) => {
+			return rightX - x;
+		}, { insertPlace: true });
+
+		fromIndex = leftIndex;
+		if (fromIndex <= 0) fromIndex = 1;
+
+		toIndex = rightIndex;
+		if (toIndex >= linePoints.length - 1) toIndex = linePoints.length - 2;
 
 		if (ASSERTS) {
 			// Check correct order
@@ -312,6 +327,8 @@ function ChartLine(options) {
 
 				oldPointData.animatePointFrom = { x: oldPoint.x, y: oldPoint.y };
 				oldPointData.animatePointTo = { x: newPoint.x, y: newPoint.y };
+
+				oldPointData.leftLine = newLinePoints[newLinePoints.length - 1].rightLine;
 
 				newLinePoints.push(oldPointData);
 
@@ -480,44 +497,21 @@ function ChartLine(options) {
 			t = t * (2 - t);
 
 			if (isFinished) {
-				/*linePoints = linePoints.filter((pointData, i) => {
+				// FIXME: delete only unneeded lines
+
+				linePoints = linePoints.filter((pointData, i) => {
 					if (!pointData.animatePointTo) return true;
 					if (!pointData.deleteAfterAnimation) return true;
-
-					let { leftLine,
-					      rightLine,
-					    } = pointData;
-
-					if (leftLine) {
-						g.removeChild(leftLine);
-						leftLine._removeStack = new Error();
-						svgHelper.freeElement(leftLine);
-						if (i > 0) linePoints[i].rightLine = null;
-					}
-					if (rightLine) {
-						g.removeChild(rightLine);
-						rightLine._removeStack = new Error();
-						svgHelper.freeElement(rightLine);
-						if (i < linePoints.length - 1) linePoints[i + 1].leftLine = null;
-					}
 
 					return false;
 				});
 
-				// FIXME
+				g.innerHTML = '';
 
-				let prevPointData = linePoints[0];
-				for (let i = 1; i < linePoints.length - 1; i++) {
-					let pointData = linePoints[i];
-
-					if (prevPointData.rightLine !== pointData.leftLine) {
-						if (!pointData.leftLine) pointData.leftLine = prevPointData.rightLine;
-						else if (!prevPointData.rightLine) prevPointData.rightLine = pointData.leftLine;
-						else debugger;
-					}
-
-					prevPointData = pointData;
-				}*/
+				linePoints.forEach(pointData => {
+					pointData.leftLine = null;
+					pointData.rightLine = null;
+				});
 			}
 
 			linePoints.forEach(pointData => {
@@ -527,8 +521,6 @@ function ChartLine(options) {
 					pointData.point = pointData.animatePointTo;
 					pointData.animatePointFrom = null;
 					pointData.animatePointTo = null;
-
-					//if (pointData.deleteAfterAnimation) console.log('delete', pointData);
 					return;
 				}
 
