@@ -76,6 +76,10 @@ style.appendChild(document.createTextNode(
 
 body.x-cursor-grabbing * {
 	cursor: grabbing !important;
+}
+
+body.x-cursor-ew-resize * {
+	cursor: ew-resize !important;
 }`));
 
 document.head.appendChild(style);

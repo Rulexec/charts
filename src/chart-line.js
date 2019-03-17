@@ -2,8 +2,8 @@ import { binarySearch } from './util.js';
 
 export default ChartLine;
 
-const VIEWPORT_ANIMATION_DURATION = 500;
-const POINTS_ANIMATION_DURATION = 500;
+const VIEWPORT_ANIMATION_DURATION = 250;
+const POINTS_ANIMATION_DURATION = 250;
 
 const ASSERTS = true;
 

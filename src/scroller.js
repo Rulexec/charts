@@ -166,8 +166,6 @@ function Scroller(options) {
 				dragWindow = {
 					startX: e.pageX,
 					startWindowX: windowX,
-					endWindowX: windowX,
-					windowOffset: -(e.offsetX + 12),
 				};
 
 				document.body.classList.add('x-cursor-grabbing');
@@ -199,6 +197,69 @@ function Scroller(options) {
 				dragWindow = null;
 
 				document.body.classList.remove('x-cursor-grabbing');
+			},
+		});
+
+		let resizeSide = null;
+
+		draggableElement({
+			element: coverWindow,
+			onStart(e) {
+				if (e.target !== coverWindow) return false;
+
+				resizeSide = {
+					startX: e.pageX,
+					startWindowX: windowX,
+					startWindowWidth: windowWidth,
+					isLeft: e.offsetX <= 0,
+				};
+
+				document.body.classList.add('x-cursor-ew-resize');
+			},
+			onMove(e) {
+				if (!resizeSide) return;
+
+				let diff = e.pageX - resizeSide.startX;
+
+				if (resizeSide.isLeft) {
+					if (diff < 0) {
+						if (-diff > resizeSide.startWindowX) diff = -resizeSide.startWindowX;
+					} else {
+						if (diff > resizeSide.startWindowWidth - 24) diff = resizeSide.startWindowWidth - 24;
+					}
+
+					windowX = resizeSide.startWindowX + diff;
+					windowX = windowX | 0;
+
+					windowWidth = (resizeSide.startWindowWidth - diff) | 0;
+					maxWindowX = WIDTH - windowWidth;
+				} else {
+					if (diff < 0) {
+						if (-diff > resizeSide.startWindowWidth - 24) diff = -(resizeSide.startWindowWidth - 24);
+					} else {
+						let maxDiff = WIDTH - resizeSide.startWindowX - resizeSide.startWindowWidth;
+
+						if (diff > maxDiff) diff = maxDiff;
+					}
+
+					windowWidth = (resizeSide.startWindowWidth + diff) | 0;
+					maxWindowX = WIDTH - windowWidth;
+				}
+
+				coverWindow.style.left = windowX + 'px';
+				coverWindow.style.width = windowWidth + 'px';
+				coverLeft.style.width = windowX + 'px';
+
+				coverRight.style.left = ((windowX + windowWidth) | 0) + 'px';
+
+				viewportUpdateDebouncer(updateViewport);
+			},
+			onEnd(e, opts) {
+				if (!resizeSide) return;
+
+				resizeSide = null;
+
+				document.body.classList.remove('x-cursor-ew-resize');
 			},
 		});
 	}
