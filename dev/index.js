@@ -1,4 +1,5 @@
 import ChartLine from '../src/chart-line.js';
+import Scroller from '../src/scroller.js';
 import SvgHelper from '../src/svg-helper.js';
 import { generalizePoints } from '../src/points-generalization.js';
 
@@ -18,8 +19,65 @@ style.innerHTML =
 	stroke: red;
 }
 
-#charts_container > svg .chart-line-g {
-	stroke: blue;
+svg .chart-line-g {
+	stroke: green;
+	stroke-width: 2px;
+}
+
+#scroller_container {
+	max-width: 400px;
+	height: 114px;
+}
+
+.x-scroller {
+	width: 100%;
+	height: 100%;
+
+	position: relative;
+}
+
+.x-scroller > svg {
+	position: absolute;
+}
+
+.x-scroller > .cover {
+	background: #d8f4ff;
+	opacity: 0.4;
+
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+}
+
+.x-scroller > .window {
+	box-sizing: border-box;
+
+	border-left: 12px solid;
+	border-right: 12px solid;
+
+	border-color: rgba(134, 221, 255, 0.4);
+
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+
+	cursor: ew-resize;
+}
+
+.x-scroller > .window > .move {
+	box-sizing: border-box;
+
+	border-top: 3px solid;
+	border-bottom: 3px solid;
+
+	border-color: rgba(134, 221, 255, 0.4);
+
+	width: 100%;
+	height: 100%;
+
+	cursor: grab;
 }`;
 
 document.head.appendChild(style);
@@ -32,6 +90,11 @@ div.id = 'charts_container';
 div.appendChild(svg);
 
 document.body.appendChild(div);
+
+let scrollerDiv = document.createElement('div');
+scrollerDiv.id = 'scroller_container';
+
+document.body.appendChild(scrollerDiv);
 
 let svgHelper = new SvgHelper();
 
@@ -56,16 +119,18 @@ for (let x = 0; x <= 142; x += 0.001) {
 	});
 }
 
+let scroller = new Scroller({
+	svgHelper,
+});
 
-/*chartLine.setState({
-	points,
-	viewport: {
-		left: 0,
-		right: 142,
-		bottom: 0,
-		top: 100,
-	},
-});*/
+scrollerDiv.appendChild(scroller.getElement());
+scroller.setState({
+	lines: [{
+		className: 'chart-line-g',
+		points,
+	}],
+});
+scroller.onShown();
 
 let generalized = generalizePoints({
 	points,
