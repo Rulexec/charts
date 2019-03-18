@@ -1,10 +1,10 @@
 import { binarySearch } from './util.js';
+import { VIEWPORT_ANIMATION_DURATION } from './consts.js';
 
 export default ChartLine;
 
-const VIEWPORT_ANIMATION_DURATION = 250;
-const POINTS_ANIMATION_DURATION = 250;
-const TOGGLE_ANIMATION_DURATION = 125;
+const POINTS_ANIMATION_DURATION = VIEWPORT_ANIMATION_DURATION;
+const TOGGLE_ANIMATION_DURATION = (VIEWPORT_ANIMATION_DURATION / 2) | 0;
 
 const ASSERTS = true;
 

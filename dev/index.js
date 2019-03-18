@@ -1,5 +1,6 @@
 import ChartLine from '../src/chart-line.js';
 import Scroller from '../src/scroller.js';
+import AxisX from '../src/axis-x.js';
 import SvgHelper from '../src/svg-helper.js';
 import { generalizePoints } from '../src/points-generalization.js';
 
@@ -9,7 +10,7 @@ let style = document.createElement('style');
 style.appendChild(document.createTextNode(
 `#charts_container {
 	width: 400px;
-	height: 300px;
+	height: 450px;
 }
 
 #charts_container > svg {
@@ -91,8 +92,11 @@ document.head.appendChild(style);
 let chartLinesStyle = document.createElement('style');
 document.head.appendChild(chartLinesStyle);
 
+const HEIGHT = 450;
+const PADDING_BOTTOM = 10;
+
 let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-svg.setAttribute('viewBox', '0 0 400 300');
+svg.setAttribute('viewBox', `0 0 400 ${HEIGHT}`);
 
 let div = document.createElement('div');
 div.id = 'charts_container';
@@ -111,14 +115,25 @@ document.body.appendChild(lineTogglesDiv);
 
 let svgHelper = new SvgHelper();
 
-let chartLine = new ChartLine({
+const AXIS_X_HEIGHT = 30;
+
+let axisX = new AxisX({
 	svg,
 	svgHelper,
 	viewBox: {
+		left: 0,
+		top: HEIGHT - AXIS_X_HEIGHT,
 		width: 400,
-		height: 300,
+		height: AXIS_X_HEIGHT,
 	},
-	className: 'chart-line',
+
+	getLabel(x) {
+		let date = new Date(x);
+
+		let month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
+
+		return month + ' ' + date.getDate();
+	},
 });
 
 let lines = [];
@@ -174,7 +189,7 @@ lines.forEach(line => {
 		svgHelper,
 		viewBox: {
 			width: 400,
-			height: 300,
+			height: HEIGHT - AXIS_X_HEIGHT - PADDING_BOTTOM,
 		},
 		className: line.className,
 	});
@@ -186,6 +201,8 @@ let scroller = new Scroller({
 		lines.forEach(({ _chartLine }) => {
 			_chartLine.moveViewport(viewport);
 		});
+
+		axisX.moveViewport(viewport);
 	},
 });
 
@@ -197,6 +214,8 @@ scroller.onShown();
 
 {
 	let viewport = scroller.getViewport();
+
+	axisX.setState({ viewport });
 
 	lines.forEach(line => {
 		let { _chartLine,
