@@ -2,6 +2,8 @@ import { VIEWPORT_ANIMATION_DURATION } from './consts.js';
 
 export default AxisX;
 
+const OPACITY_DURATION = 250;
+
 function AxisX(options) {
 	let { svg,
 	      svgHelper,
@@ -21,8 +23,13 @@ function AxisX(options) {
 	let animationOldViewport = null;
 	let animationNewViewport = null;
 
+	let animationLabelsTransition = false;
+
 	let labels = [];
+
+	let maxHalfWidth = 0;
 	let stepChartX;
+	let oldStepPixelsX;
 
 	this.setState = function(options) {
 		let { left, right } = options.viewport;
@@ -71,7 +78,9 @@ function AxisX(options) {
 		}
 
 		let stepX = (innerSpace + labelWidth) / (innerCount + 1);
+
 		stepChartX = getChartXByPixelsX(stepX, left, right) - left;
+		oldStepPixelsX = stepX;
 
 		leftTextNode.setAttribute('x', leftX | 0);
 		rightTextNode.setAttribute('x', rightX | 0);
@@ -109,6 +118,10 @@ function AxisX(options) {
 			x: rightChartX,
 			node: rightTextNode,
 			halfWidth: rightTextNode.getBoundingClientRect().width / 2,
+		});
+
+		labels.forEach(label => {
+			if (label.halfWidth > maxHalfWidth) maxHalfWidth = label.halfWidth;
 		});
 	};
 
@@ -148,6 +161,8 @@ function AxisX(options) {
 
 					if (opts.redrawLabels) redrawLabels();
 
+					transitionLabels(time);
+
 					loop(time);
 				});
 			}
@@ -158,7 +173,7 @@ function AxisX(options) {
 				animationViewportStartTime = time;
 			}
 
-			let isAnimationGoing = !!animationViewportStartTime;
+			let isAnimationGoing = !!animationViewportStartTime || animationLabelsTransition;
 
 			return !isAnimationGoing;
 		}
@@ -195,38 +210,163 @@ function AxisX(options) {
 		}
 	}
 
-	function redrawLabels() {
+	function redrawLabels(opts) {
+		if (!labels.length) {
+			console.error('NO LABELS');
+			return;
+		}
+
 		let { left, right } = viewport;
 
 		let labelsToRemove = [];
 		let labelsToAdd = [];
 
+		let stepPixelsX = getPixelsXByChartX(left + stepChartX, left, right);
+
+		// Insert/remove middle labels
+
+		let needSortLabels =
+			    stepPixelsX - maxHalfWidth * 2.5 <= 0
+			 || stepPixelsX >= maxHalfWidth * 5;
+
+		if (needSortLabels) {
+			labels.sort((a, b) => a.x - b.x);
+		}
+
+		// remove every second label
+		while (stepPixelsX - maxHalfWidth * 2.2 <= 0) {
+			let remove = true;
+
+			for (let i = 0; i < labels.length; i++) {
+				let label = labels[i];
+
+				if (label.removing) continue;
+
+				if (remove) {
+					label.removing = true;
+					label.adding = false;
+
+					label.transitionStartTime = 0;
+					animationLabelsTransition = true;
+				}
+
+				remove = !remove;
+			}
+
+			stepChartX *= 2;
+			stepPixelsX = getPixelsXByChartX(left + stepChartX, left, right);
+
+			console.log('increase', stepPixelsX, stepChartX);
+		}
+
+		// add labels to the middle
+		while (stepPixelsX >= maxHalfWidth * 5) {
+			stepChartX /= 2;
+			stepPixelsX = getPixelsXByChartX(left + stepChartX, left, right);
+
+			let newLabels = [];
+
+			let isFirstNonRemoving = true;
+			let lastNonRemovingLabel;
+
+			for (let i = 0; i < labels.length;) {
+				let label = labels[i];
+
+				newLabels.push(label);
+
+				i++;
+
+				if (label.removing) continue;
+
+				lastNonRemovingLabel = label;
+
+				if (isFirstNonRemoving) {
+					isFirstNonRemoving = false;
+
+					// FIXME: extract label creation from `getOrCreateLabel`
+					// FIXME: there can be `removing` at the same place
+					let newLabel = getOrCreateLabel(label.x - stepChartX, 0, true);
+
+					newLabel.removing = false;
+					newLabel.adding = true;
+					newLabel.transitionStartTime = 0;
+
+					newLabels.push(newLabel);
+				}
+
+				let j = i;
+
+				while (i < labels.length) {
+					let nextLabel = labels[i];
+					if (nextLabel.removing) {
+						newLabels.push(nextLabel);
+
+						i++;
+						continue;
+					}
+
+					let middleCount = i - j;
+
+					if (middleCount > 0) {
+						let middle = j + (middleCount / 2) | 0;
+
+						let removingLabel = labels[middle];
+
+						removingLabel.removing = false;
+						removingLabel.adding = true;
+						removingLabel.transitionStartTime = 0;
+					} else {
+						// FIXME: extract label creation from `getOrCreateLabel`
+						let newLabel = getOrCreateLabel(label.x + stepChartX, 0, true);
+
+						newLabel.removing = false;
+						newLabel.adding = true;
+						newLabel.transitionStartTime = 0;
+
+						newLabels.push(newLabel);
+					}
+
+					animationLabelsTransition = true;
+					break;
+				}
+			}
+
+			if (lastNonRemovingLabel) {
+				isFirstNonRemoving = false;
+
+				// FIXME: extract label creation from `getOrCreateLabel`
+				// FIXME: there can be `removing` at the same place
+				let newLabel = getOrCreateLabel(lastNonRemovingLabel.x + stepChartX, 0, true);
+
+				newLabel.removing = false;
+				newLabel.adding = true;
+				newLabel.transitionStartTime = 0;
+
+				newLabels.push(newLabel);
+			}
+
+			labels = newLabels;
+		}
+
+		// Move labels/remove outscreen
+
 		let mostLeftChartX = Infinity;
 		let mostRightChartX = -Infinity;
 		let mostLeftPixelsX, mostRightPixelsX;
-
-		let maxHalfWidth = 0;
-
-		if (!labels.length) {
-			console.error('NO LABELS');
-			return;
-		}
 
 		labels.forEach(label => {
 			let { x, node, halfWidth } = label;
 
 			let pixelsX = getPixelsXByChartX(x, left, right);
 
-			if (x < mostLeftChartX) {
+			if (x < mostLeftChartX && !label.removing) {
 				mostLeftChartX = x;
 				mostLeftPixelsX = pixelsX;
 			}
-			if (x > mostRightChartX) {
+			if (x > mostRightChartX && !label.removing) {
 				mostRightChartX = x;
 				mostRightPixelsX = pixelsX;
 			}
-
-			if (halfWidth > maxHalfWidth) maxHalfWidth = halfWidth;
 
 			let needRemove = false;
 
@@ -242,7 +382,6 @@ function AxisX(options) {
 		});
 
 		// insert labels
-		let stepPixelsX = getPixelsXByChartX(left + stepChartX, left, right);
 
 		do {
 			mostRightChartX += stepChartX;
@@ -291,7 +430,7 @@ function AxisX(options) {
 
 		labelsToAdd.forEach(label => { labels.push(label); });
 
-		function getOrCreateLabel(chartX, pixelsX) {
+		function getOrCreateLabel(chartX, pixelsX, doNotPush) {
 			let label;
 
 			if (labelsToRemove.length) {
@@ -305,7 +444,7 @@ function AxisX(options) {
 
 				g.appendChild(label.node);
 
-				labelsToAdd.push(label);
+				if (!doNotPush) labelsToAdd.push(label);
 			}
 
 			label.x = chartX;
@@ -313,6 +452,83 @@ function AxisX(options) {
 			label.halfWidth = label.node.getBoundingClientRect().width / 2;
 
 			label.node.setAttribute('x', pixelsX | 0);
+
+			return label;
+		}
+	}
+
+	function transitionLabels(time) {
+		if (!animationLabelsTransition) return;
+
+		animationLabelsTransition = false;
+
+		let labelsToRemove = [];
+
+		labels.forEach(label => {
+			if (!label.transitionStartTime && (label.removing || label.adding)) {
+				label.transitionStartTime = time;
+
+				if (typeof label.opacity !== 'number') {
+					label.opacity = label.adding ? 0 : 1;
+					label.startOpacity = label.adding ? 0 : 1;
+
+					if (label.adding) {
+						label.node.style.opacity = 0;
+					}
+				}
+
+				label.startOpacity = label.opacity;
+				label.endOpacity = label.adding ? 1 : 0;
+
+				animationLabelsTransition = true;
+				return;
+			}
+
+			if (!label.transitionStartTime) return;
+
+			let elapsed = time - label.transitionStartTime;
+
+			if (elapsed >= OPACITY_DURATION) {
+				label.node.style.opacity = label.endOpacity;
+
+				label.transitionStartTime = 0;
+
+				if (label.removing) labelsToRemove.push(label);
+
+				label.removing = false;
+				label.adding = false;
+			} else {
+				let t = elapsed / OPACITY_DURATION;
+
+				if (label.removing) t = t * (2 - t);
+				else t = t * t;
+
+				label.opacity = label.startOpacity + (label.endOpacity - label.startOpacity) * t;
+				label.node.style.opacity = label.opacity;
+
+				animationLabelsTransition = true;
+			}
+		});
+
+		labelsToRemove.forEach(label => {
+			g.removeChild(label.node);
+
+			svgHelper.freeElement(label.node);
+		});
+
+		if (labelsToRemove.length) {
+			let index = 0;
+
+			labels = labels.filter(label => {
+				if (index >= labelsToRemove.length) return true;
+
+				if (labelsToRemove[index] === label) {
+					index++;
+					return false;
+				}
+
+				return true;
+			});
 		}
 	}
 
