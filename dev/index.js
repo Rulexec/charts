@@ -1,6 +1,7 @@
 import ChartLine from '../src/chart-line.js';
 import Scroller from '../src/scroller.js';
 import AxisX from '../src/axis-x.js';
+import AxisY from '../src/axis-y.js';
 import SvgHelper from '../src/svg-helper.js';
 import { generalizePoints } from '../src/points-generalization.js';
 
@@ -16,6 +17,10 @@ style.appendChild(document.createTextNode(
 #charts_container > svg {
 	width: 100%;
 	height: 100%;
+}
+
+#charts_container > svg .y-axis .line {
+	stroke: #dedede;
 }
 
 #scroller_container {
@@ -136,6 +141,18 @@ let axisX = new AxisX({
 	},
 });
 
+let axisY = new AxisY({
+	svg,
+	svgHelper,
+	viewBox: {
+		left: 0,
+		top: 0,
+		width: 400,
+		height: HEIGHT - AXIS_X_HEIGHT,
+	},
+	className: 'y-axis',
+});
+
 let lines = [];
 
 {
@@ -195,14 +212,23 @@ lines.forEach(line => {
 	});
 });
 
+function hintViewport(viewport) {
+	viewport.bottom = 0;
+
+	axisY.hintViewport(viewport);
+}
+
 let scroller = new Scroller({
 	svgHelper,
 	onViewportUpdate(viewport) {
+		hintViewport(viewport);
+
 		lines.forEach(({ _chartLine }) => {
 			_chartLine.moveViewport(viewport);
 		});
 
 		axisX.moveViewport(viewport);
+		axisY.moveViewport(viewport);
 	},
 });
 
@@ -214,8 +240,10 @@ scroller.onShown();
 
 {
 	let viewport = scroller.getViewport();
+	hintViewport(viewport);
 
 	axisX.setState({ viewport });
+	axisY.setState({ viewport });
 
 	lines.forEach(line => {
 		let { _chartLine,
