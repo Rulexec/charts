@@ -1,4 +1,5 @@
 import ChartLine from './chart-line.js';
+import Animation from  './animation.js';
 import { generalizePoints } from './points-generalization.js';
 import { draggableElement, createDebouncer, binarySearch } from './util.js';
 
@@ -45,6 +46,8 @@ function Scroller(options) {
 
 	setupDragging();
 
+	let animation = new Animation();
+
 	let previewLines = [];
 
 	let WIDTH;
@@ -89,7 +92,7 @@ function Scroller(options) {
 		let fewPixelsGapY = (yWidth / HEIGHT) * 4;
 
 		previewLines.forEach(line => {
-			line.chartLine.moveViewport({
+			animation.moveViewport({
 				left: minX,
 				right: maxX,
 				bottom: minY - fewPixelsGapY,
@@ -143,6 +146,8 @@ function Scroller(options) {
 					height: HEIGHT,
 				},
 				className,
+
+				animation,
 			});
 
 			previewLines.push({
@@ -178,17 +183,21 @@ function Scroller(options) {
 
 		let fewPixelsGapY = (yWidth / HEIGHT) * 4;
 
+		let viewport = {
+			left: minX,
+			right: maxX,
+			bottom: minY - fewPixelsGapY,
+			top: maxY + fewPixelsGapY,
+		};
+
+		animation.setViewport(viewport);
+
 		generalizedPoints.forEach((points, i) => {
 			let chartLine = previewLines[i].chartLine;
 
 			chartLine.setState({
 				points,
-				viewport: {
-					left: minX,
-					right: maxX,
-					bottom: minY - fewPixelsGapY,
-					top: maxY + fewPixelsGapY,
-				},
+				viewport,
 			});
 		});
 	}

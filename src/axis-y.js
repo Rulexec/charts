@@ -12,6 +12,7 @@ function AxisY(options) {
 	      svgHelper,
 	      viewBox: { left: LEFT, top: TOP, width: WIDTH, height: HEIGHT },
 	      className,
+	      animation,
 	    } = options;
 
 	let g = svgHelper.createElement('g');
@@ -20,11 +21,6 @@ function AxisY(options) {
 	if (LEFT || TOP) g.setAttribute('transform', `translate(${LEFT} ${TOP})`);
 
 	let animationRunning = false;
-
-	let viewport;
-	let animationViewportStartTime = 0;
-	let animationOldViewport = null;
-	let animationNewViewport = null;
 
 	let animationLinesTransition = false;
 
@@ -36,7 +32,6 @@ function AxisY(options) {
 
 	this.setState = function(options) {
 		let { bottom, top } = options.viewport;
-		viewport = { bottom, top };
 
 		// WARN: COPYPASTED to `moveViewport`
 		let topLineChartY = bottom + (top - bottom) * (lineGapPx * linesCount / HEIGHT);
@@ -88,14 +83,7 @@ function AxisY(options) {
 		};
 	}
 
-	this.moveViewport = function(newViewport) {
-		animationViewportStartTime = 0;
-		animationOldViewport = viewport;
-		animationNewViewport = {
-			bottom: newViewport.bottom,
-			top: newViewport.top,
-		};
-
+	animation.onViewportMoveStart(({ oldViewport, newViewport }) => {
 		let { bottom, top } = newViewport;
 
 		// COPYPASTE of `setState`
@@ -152,7 +140,11 @@ function AxisY(options) {
 		}
 
 		startAnimation();
-	};
+	});
+
+	animation.onViewportUpdate(({ viewport }) => {
+		redrawLines({ viewport });
+	});
 
 	this.hintViewport = function(viewport) {
 		let { top } = viewport;
@@ -165,7 +157,7 @@ function AxisY(options) {
 		viewport.top = newTop;
 	};
 
-	function redrawLines() {
+	function redrawLines({ viewport }) {
 		let { bottom, top } = viewport;
 
 		lines.forEach(line => {
@@ -178,78 +170,17 @@ function AxisY(options) {
 	function startAnimation() {
 		if (animationRunning) return;
 
-		animationRunning = true;
+		animationRunning = animation.animationFrame(({ prevTime, time }) => {
+			transitionLines(prevTime, time);
 
-		requestAnimationFrame(time => {
-			let startTime = time;
-
-			loop(startTime);
-
-			function loop(prevTime) {
-				if (checkFinish(prevTime)) {
-					animationRunning = false;
-					return;
-				}
-
-				requestAnimationFrame(time => {
-					let opts = {
-						redrawLines: false,
-					};
-
-					viewportAnimation(time, opts);
-
-					if (opts.redrawLines) redrawLines();
-
-					transitionLines(time);
-
-					loop(time);
-				});
+			if (!animationLinesTransition) {
+				animationRunning.cancel();
+				animationRunning = null;
 			}
 		});
-
-		function checkFinish(time) {
-			if (animationNewViewport && !animationViewportStartTime) {
-				animationViewportStartTime = time;
-			}
-
-			let isAnimationGoing = !!animationViewportStartTime || animationLinesTransition;
-
-			return !isAnimationGoing;
-		}
-
-		function viewportAnimation(time, opts) {
-			if (!animationViewportStartTime) return;
-
-			let { bottom: newBottom,
-			      top: newTop,
-			    } = animationNewViewport;
-
-			let { bottom: oldBottom,
-			      top: oldTop,
-			    } = animationOldViewport;
-
-			let elapsed = time - animationViewportStartTime;
-
-			if (elapsed >= VIEWPORT_ANIMATION_DURATION) {
-				viewport.bottom = newBottom;
-				viewport.top = newTop;
-
-				animationOldViewport = null;
-				animationNewViewport = null;
-				animationViewportStartTime = 0;
-			} else {
-				let t = elapsed / VIEWPORT_ANIMATION_DURATION;
-				t = t * (2 - t);
-
-				viewport.bottom = oldBottom + (newBottom - oldBottom) * t;
-				viewport.top = oldTop + (newTop - oldTop) * t;
-			}
-
-			opts.redrawLines = true;
-		}
 	}
 
-	function transitionLines(time) {
+	function transitionLines(prevTime, time) {
 		if (!animationLinesTransition) return;
 
 		animationLinesTransition = false;
@@ -258,7 +189,7 @@ function AxisY(options) {
 
 		lines.forEach(line => {
 			if (!line.transitionStartTime && (line.removing || line.adding)) {
-				line.transitionStartTime = time;
+				line.transitionStartTime = prevTime;
 
 				if (typeof line.opacity !== 'number') {
 					line.opacity = line.adding ? 0 : 1;

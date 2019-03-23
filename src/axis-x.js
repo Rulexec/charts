@@ -9,6 +9,7 @@ function AxisX(options) {
 	      svgHelper,
 	      viewBox: { left: LEFT, top: TOP, width: WIDTH, height: HEIGHT },
 	      getLabel,
+	      animation,
 	    } = options;
 
 	let g = svgHelper.createElement('g');
@@ -18,11 +19,6 @@ function AxisX(options) {
 
 	let animationRunning = false;
 
-	let viewport;
-	let animationViewportStartTime = 0;
-	let animationOldViewport = null;
-	let animationNewViewport = null;
-
 	let animationLabelsTransition = false;
 
 	let labels = [];
@@ -31,13 +27,12 @@ function AxisX(options) {
 	let stepChartX;
 	let oldStepPixelsX;
 
+	animation.onViewportUpdate(({ viewport }) => {
+		redrawLabels({ viewport });
+	});
+
 	this.setState = function(options) {
 		let { left, right } = options.viewport;
-
-		viewport = { left, right };
-		animationViewportStartTime = 0;
-		animationOldViewport = null;
-		animationNewViewport = null;
 
 		// TODO: reuse/free elements
 		g.innerHTML = '';
@@ -125,92 +120,20 @@ function AxisX(options) {
 		});
 	};
 
-	this.moveViewport = function(newViewport) {
-		animationViewportStartTime = 0;
-		animationOldViewport = viewport;
-		animationNewViewport = {
-			left: newViewport.left,
-			right: newViewport.right,
-		};
-
-		startAnimation();
-	};
-
 	function startAnimation() {
-		if (animationRunning) return;
+		if (animationRunning || !animationLabelsTransition) return;
 
-		animationRunning = true;
+		animationRunning = animation.animationFrame(({ prevTime, time }) => {
+			transitionLabels(prevTime, time);
 
-		requestAnimationFrame(time => {
-			let startTime = time;
-
-			loop(startTime);
-
-			function loop(prevTime) {
-				if (checkFinish(prevTime)) {
-					animationRunning = false;
-					return;
-				}
-
-				requestAnimationFrame(time => {
-					let opts = {
-						redrawLabels: false,
-					};
-
-					viewportAnimation(time, opts);
-
-					if (opts.redrawLabels) redrawLabels();
-
-					transitionLabels(time);
-
-					loop(time);
-				});
+			if (!animationLabelsTransition) {
+				animationRunning.cancel();
+				animationRunning = null;
 			}
 		});
-
-		function checkFinish(time) {
-			if (animationNewViewport && !animationViewportStartTime) {
-				animationViewportStartTime = time;
-			}
-
-			let isAnimationGoing = !!animationViewportStartTime || animationLabelsTransition;
-
-			return !isAnimationGoing;
-		}
-
-		function viewportAnimation(time, opts) {
-			if (!animationViewportStartTime) return;
-
-			let { left: newLeft,
-			      right: newRight,
-			    } = animationNewViewport;
-
-			let { left: oldLeft,
-			      right: oldRight,
-			    } = animationOldViewport;
-
-			let elapsed = time - animationViewportStartTime;
-
-			if (elapsed >= VIEWPORT_ANIMATION_DURATION) {
-				viewport.left = newLeft;
-				viewport.right = newRight;
-
-				animationOldViewport = null;
-				animationNewViewport = null;
-				animationViewportStartTime = 0;
-			} else {
-				let t = elapsed / VIEWPORT_ANIMATION_DURATION;
-				t = t * (2 - t);
-
-				viewport.left = oldLeft + (newLeft - oldLeft) * t;
-				viewport.right = oldRight + (newRight - oldRight) * t;
-			}
-
-			opts.redrawLabels = true;
-		}
 	}
 
-	function redrawLabels(opts) {
+	function redrawLabels({ viewport }) {
 		if (!labels.length) {
 			console.error('NO LABELS');
 			return;
@@ -255,8 +178,6 @@ function AxisX(options) {
 
 			stepChartX *= 2;
 			stepPixelsX = getPixelsXByChartX(left + stepChartX, left, right);
-
-			console.log('increase', stepPixelsX, stepChartX);
 		}
 
 		// add labels to the middle
@@ -430,6 +351,8 @@ function AxisX(options) {
 
 		labelsToAdd.forEach(label => { labels.push(label); });
 
+		startAnimation();
+
 		function getOrCreateLabel(chartX, pixelsX, doNotPush) {
 			let label;
 
@@ -457,7 +380,7 @@ function AxisX(options) {
 		}
 	}
 
-	function transitionLabels(time) {
+	function transitionLabels(prevTime, time) {
 		if (!animationLabelsTransition) return;
 
 		animationLabelsTransition = false;
@@ -466,7 +389,7 @@ function AxisX(options) {
 
 		labels.forEach(label => {
 			if (!label.transitionStartTime && (label.removing || label.adding)) {
-				label.transitionStartTime = time;
+				label.transitionStartTime = prevTime;
 
 				if (typeof label.opacity !== 'number') {
 					label.opacity = label.adding ? 0 : 1;

@@ -3,6 +3,7 @@ import Scroller from '../src/scroller.js';
 import AxisX from '../src/axis-x.js';
 import AxisY from '../src/axis-y.js';
 import SvgHelper from '../src/svg-helper.js';
+import Animation from '../src/animation.js';
 import { generalizePoints } from '../src/points-generalization.js';
 
 import tgData from './chart_data.json';
@@ -20,7 +21,8 @@ style.appendChild(document.createTextNode(
 }
 
 #charts_container > svg .y-axis .line {
-	stroke: #dedede;
+	/*stroke: #dedede;*/
+	stroke: black;
 }
 
 #scroller_container {
@@ -120,6 +122,8 @@ document.body.appendChild(lineTogglesDiv);
 
 let svgHelper = new SvgHelper();
 
+let animation = new Animation();
+
 const AXIS_X_HEIGHT = 30;
 
 let axisX = new AxisX({
@@ -139,6 +143,8 @@ let axisX = new AxisX({
 
 		return month + ' ' + date.getDate();
 	},
+
+	animation,
 });
 
 let axisY = new AxisY({
@@ -151,6 +157,8 @@ let axisY = new AxisY({
 		height: HEIGHT - AXIS_X_HEIGHT,
 	},
 	className: 'y-axis',
+
+	animation,
 });
 
 let lines = [];
@@ -209,6 +217,8 @@ lines.forEach(line => {
 			height: HEIGHT - AXIS_X_HEIGHT - PADDING_BOTTOM,
 		},
 		className: line.className,
+
+		animation,
 	});
 });
 
@@ -223,12 +233,11 @@ let scroller = new Scroller({
 	onViewportUpdate(viewport) {
 		hintViewport(viewport);
 
-		lines.forEach(({ _chartLine }) => {
+		/*lines.forEach(({ _chartLine }) => {
 			_chartLine.moveViewport(viewport);
-		});
+		});*/
 
-		axisX.moveViewport(viewport);
-		axisY.moveViewport(viewport);
+		animation.moveViewport(viewport);
 	},
 });
 
@@ -242,6 +251,7 @@ scroller.onShown();
 	let viewport = scroller.getViewport();
 	hintViewport(viewport);
 
+	animation.setViewport(viewport);
 	axisX.setState({ viewport });
 	axisY.setState({ viewport });
 

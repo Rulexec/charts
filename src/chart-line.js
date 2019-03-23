@@ -13,6 +13,7 @@ function ChartLine(options) {
 		  svgHelper,
 	      viewBox: { width: WIDTH, height: HEIGHT },
 	      className,
+	      animation,
 	    } = options;
 
 	let g = svgHelper.createElement('g');
@@ -24,18 +25,12 @@ function ChartLine(options) {
 	let needPointsAnimation = false;
 	let animationPointsStartTime = 0;
 
-	let viewport;
-
-	let animationRunning = false;
+	let animationRunning = null;
 
 	let animationToggleStartTime = 0;
 	let animationToggleOpacity = 1;
 	let animationToggleOldOpacity = 1;
 	let animationToggleNewOpacity = 1;
-
-	let animationViewportStartTime = 0;
-	let animationOldViewport = null;
-	let animationNewViewport = null;
 
 	let prevRedrawXLeft = 0;
 	let prevRedrawXRight = 0;
@@ -43,8 +38,6 @@ function ChartLine(options) {
 	this.setState = function(options) {
 		let { points,
 		    } = options;
-
-		viewport = options.viewport;
 
 		linePoints = [{
 			point: { x: -Infinity, y: 0 },
@@ -56,7 +49,7 @@ function ChartLine(options) {
 		let {
 		     left, right,
 		     bottom, top,
-		    } = viewport;
+		    } = options.viewport;
 
 		prevRedrawXLeft = left;
 		prevRedrawXRight = right;
@@ -463,66 +456,44 @@ function ChartLine(options) {
 		}
 	};
 
-	this.moveViewport = function(newViewport) {
-		animationOldViewport = Object.assign({}, viewport);
-		animationNewViewport = Object.assign({}, newViewport);
+	let frameState = animation.createFrameState(() => {
+		return {
+			needRedrawLines: false,
+		};
+	});
 
-		animationViewportStartTime = 0;
+	animation.onViewportUpdate({ frameState }, ({ state }) => {
+		state.needRedrawLines = true;
 
-		startAnimation();
-	};
+		if (!animationRunning) startAnimation();
+	});
 
 	function startAnimation() {
 		if (animationRunning) return;
 
-		animationRunning = true;
-
-		requestAnimationFrame(time => {
-			let startTime = time;
-
-			loop(startTime);
-
-			function loop(prevTime) {
-				if (checkFinish(prevTime)) {
-					animationRunning = false;
-					return;
-				}
-
-				requestAnimationFrame(time => {
-					let opts = {
-						needRedrawLines: false,
-					};
-
-					pointsAnimation(time, opts);
-					viewportAnimation(time, opts);
-					toggleAnimation(time, opts);
-
-					if (opts.needRedrawLines) redrawLines();
-
-					loop(time);
-				});
-			}
-		});
-
-		function checkFinish(time) {
-			if (animationNewViewport && !animationViewportStartTime) {
-				animationViewportStartTime = time;
-			}
-
+		animationRunning = animation.animationFrame({ frameState }, ({ state, prevTime, time, viewport }) => {
 			if (needPointsAnimation && !animationPointsStartTime) {
-				animationPointsStartTime = time;
+				animationPointsStartTime = prevTime;
 			}
 
 			if (!animationToggleStartTime && animationToggleOpacity !== animationToggleNewOpacity) {
-				animationToggleStartTime = time;
+				animationToggleStartTime = prevTime;
 			}
 
-			let isAnimationGoing =
-				    !!animationViewportStartTime || !!animationPointsStartTime
-				 || !!animationToggleStartTime;
+			pointsAnimation(time, state);
+			toggleAnimation(time, state);
 
-			return !isAnimationGoing;
-		}
+			if (state.needRedrawLines) {
+				redrawLines({ viewport });
+			}
+
+			let isAnimationGoing = !!animationPointsStartTime || !!animationToggleStartTime;
+
+			if (!isAnimationGoing) {
+				animationRunning.cancel();
+				animationRunning = null;
+			}
+		});
 
 		function pointsAnimation(time, opts) {
 			if (!animationPointsStartTime) return;
@@ -577,45 +548,6 @@ function ChartLine(options) {
 			opts.needRedrawLines = true;
 		}
 
-		function viewportAnimation(time, opts) {
-			if (!animationViewportStartTime) return;
-
-			let { left: newLeft,
-			      right: newRight,
-			      bottom: newBottom,
-			      top: newTop,
-			    } = animationNewViewport;
-
-			let { left: oldLeft,
-			      right: oldRight,
-			      bottom: oldBottom,
-			      top: oldTop,
-			    } = animationOldViewport;
-
-			let elapsed = time - animationViewportStartTime;
-
-			if (elapsed >= VIEWPORT_ANIMATION_DURATION) {
-				viewport.left = newLeft;
-				viewport.right = newRight;
-				viewport.bottom = newBottom;
-				viewport.top = newTop;
-
-				animationOldViewport = null;
-				animationNewViewport = null;
-				animationViewportStartTime = 0;
-			} else {
-				let t = elapsed / VIEWPORT_ANIMATION_DURATION;
-				t = t * (2 - t);
-
-				viewport.left = oldLeft + (newLeft - oldLeft) * t;
-				viewport.right = oldRight + (newRight - oldRight) * t;
-				viewport.bottom = oldBottom + (newBottom - oldBottom) * t;
-				viewport.top = oldTop + (newTop - oldTop) * t;
-			}
-
-			opts.needRedrawLines = true;
-		}
-
 		function toggleAnimation(time) {
 			if (!animationToggleStartTime) return;
 
@@ -639,7 +571,7 @@ function ChartLine(options) {
 		}
 	}
 
-	function redrawLines() {
+	function redrawLines({ viewport }) {
 		let {
 		     left, right,
 		     bottom, top,
