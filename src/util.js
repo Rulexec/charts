@@ -70,12 +70,12 @@ function draggableElement(options) {
 		if (!fromEl || fromEl.nodeName == 'HTML') {
 			// On leaving window
 
-			document.body.removeEventListener('mousemove', onMouseMove);
+			/*document.body.removeEventListener('mousemove', onMouseMove);
 			document.body.removeEventListener('mouseup', onMouseUp);
 			window.removeEventListener('blur', onWindowBlur);
 			window.removeEventListener('mouseout', onWindowMouseOut);
 
-			onEnd(e, { isCancel: true });
+			onEnd(e, { isCancel: true });*/
 		}
 	}
 

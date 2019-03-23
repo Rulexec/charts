@@ -10,37 +10,37 @@ import tgData from './chart_data.json';
 
 let style = document.createElement('style');
 style.appendChild(document.createTextNode(
-`#charts_container {
+`.x-charts-container {
 	width: 400px;
 	height: 450px;
 }
 
-#charts_container > svg {
+.x-charts-container > svg {
 	width: 100%;
 	height: 100%;
 
 	font-family: sans-serif;
 }
 
-#charts_container > svg .y-axis .line {
+.x-charts-container > svg .y-axis .line {
 	stroke: #dadfe2;
 }
-#charts_container > svg .y-axis .label {
+.x-charts-container > svg .y-axis .label {
 	fill: #242a2d;
 	font-size: 14px;
 }
-#charts_container > svg .x-axis text {
+.x-charts-container > svg .x-axis text {
 	fill: #242a2d;
 	font-size: 14px;
 }
 
-#scroller_container {
+.x-scroller-container {
 	margin-top: 20px;
 	max-width: 400px;
 	height: 114px;
 }
 
-#toggles_container {
+.x-toggles-container {
 	margin-top: 20px;
 }
 
@@ -111,213 +111,193 @@ document.head.appendChild(chartLinesStyle);
 const HEIGHT = 450;
 const PADDING_BOTTOM = 10;
 
-let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-svg.setAttribute('viewBox', `0 0 400 ${HEIGHT}`);
+tgData.forEach(data => { createChart(data); });
 
-let div = document.createElement('div');
-div.id = 'charts_container';
-div.appendChild(svg);
+function createChart(data) {
+	let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+	svg.setAttribute('viewBox', `0 0 400 ${HEIGHT}`);
 
-document.body.appendChild(div);
+	let div = document.createElement('div');
+	div.className = 'x-charts-container';
+	div.appendChild(svg);
 
-let scrollerDiv = document.createElement('div');
-scrollerDiv.id = 'scroller_container';
+	document.body.appendChild(div);
 
-document.body.appendChild(scrollerDiv);
+	let scrollerDiv = document.createElement('div');
+	scrollerDiv.className = 'x-scroller-container';
 
-let lineTogglesDiv = document.createElement('div');
-lineTogglesDiv.id = 'toggles_container';
-document.body.appendChild(lineTogglesDiv);
+	document.body.appendChild(scrollerDiv);
 
-let svgHelper = new SvgHelper();
+	let lineTogglesDiv = document.createElement('div');
+	lineTogglesDiv.className = 'x-toggles-container';
+	document.body.appendChild(lineTogglesDiv);
 
-let animation = new Animation();
+	let svgHelper = new SvgHelper();
 
-const AXIS_X_HEIGHT = 30;
+	let animation = new Animation();
 
-let axisX = new AxisX({
-	svg,
-	svgHelper,
-	viewBox: {
-		left: 0,
-		top: HEIGHT - AXIS_X_HEIGHT,
-		width: 400,
-		height: AXIS_X_HEIGHT,
-	},
+	const AXIS_X_HEIGHT = 30;
 
-	getLabel(x) {
-		let date = new Date(x);
-
-		let month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
-
-		return month + ' ' + date.getDate();
-	},
-
-	animation,
-});
-
-let axisY = new AxisY({
-	svg,
-	svgHelper,
-	viewBox: {
-		left: 0,
-		top: 0,
-		width: 400,
-		height: HEIGHT - AXIS_X_HEIGHT,
-	},
-	className: 'y-axis',
-
-	animation,
-});
-
-let lines = [];
-
-{
-	let data = tgData[0];
-
-	let xColumn = data.columns[0];
-
-	let linesCount = data.columns.length - 1;
-	let xColumnLength = xColumn.length;
-
-	for (let i = 0; i < linesCount; i++) {
-		let yColumn = data.columns[i + 1];
-
-		let key = yColumn[0];
-
-		let points = [];
-
-		for (let j = 1; j < xColumnLength; j++) {
-			let x = xColumn[j];
-			let y = yColumn[j];
-
-			points.push({ x, y });
-		}
-
-		lines.push({
-			id: key,
-			className: 'chart-line-' + i,
-			_name: data.names[key],
-			_color: data.colors[key],
-			points,
-		});
-	}
-}
-
-{
-	let style = lines.map(({ className, _color }) => {
-		let s = `svg .${className} {\n`;
-		s += `stroke: ${_color};\n`;
-		s += `stroke-width: 2px;\n`;
-		s += `}`;
-
-		return s;
-	}).join('\n');
-
-	chartLinesStyle.appendChild(document.createTextNode(style));
-}
-
-lines.forEach(line => {
-	line._chartLine = new ChartLine({
+	let axisX = new AxisX({
 		svg,
 		svgHelper,
 		viewBox: {
+			left: 0,
+			top: HEIGHT - AXIS_X_HEIGHT,
 			width: 400,
-			height: HEIGHT - AXIS_X_HEIGHT - PADDING_BOTTOM,
+			height: AXIS_X_HEIGHT,
 		},
-		className: line.className,
+
+		getLabel(x) {
+			let date = new Date(x);
+
+			let month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
+
+			return month + ' ' + date.getDate();
+		},
 
 		animation,
 	});
-});
 
-function hintViewport(viewport) {
-	viewport.bottom = 0;
+	let axisY = new AxisY({
+		svg,
+		svgHelper,
+		viewBox: {
+			left: 0,
+			top: 0,
+			width: 400,
+			height: HEIGHT - AXIS_X_HEIGHT,
+		},
+		className: 'y-axis',
 
-	viewport.left = Math.floor(viewport.left);
-	viewport.right = Math.ceil(viewport.right);
-	viewport.top = Math.ceil(viewport.top);
+		animation,
+	});
 
-	axisY.hintViewport(viewport);
-}
+	let lines = [];
 
-let scroller = new Scroller({
-	svgHelper,
-	onViewportUpdate(viewport) {
+	{
+		let xColumn = data.columns[0];
+
+		let linesCount = data.columns.length - 1;
+		let xColumnLength = xColumn.length;
+
+		for (let i = 0; i < linesCount; i++) {
+			let yColumn = data.columns[i + 1];
+
+			let key = yColumn[0];
+
+			let points = [];
+
+			for (let j = 1; j < xColumnLength; j++) {
+				let x = xColumn[j];
+				let y = yColumn[j];
+
+				points.push({ x, y });
+			}
+
+			lines.push({
+				id: key,
+				className: 'chart-line-' + i,
+				_name: data.names[key],
+				_color: data.colors[key],
+				points,
+			});
+		}
+	}
+
+	{
+		let style = lines.map(({ className, _color }) => {
+			let s = `svg .${className} {\n`;
+			s += `stroke: ${_color};\n`;
+			s += `stroke-width: 2px;\n`;
+			s += `}`;
+
+			return s;
+		}).join('\n');
+
+		chartLinesStyle.appendChild(document.createTextNode(style));
+	}
+
+	lines.forEach(line => {
+		line._chartLine = new ChartLine({
+			svg,
+			svgHelper,
+			viewBox: {
+				width: 400,
+				height: HEIGHT - AXIS_X_HEIGHT - PADDING_BOTTOM,
+			},
+			className: line.className,
+
+			animation,
+		});
+	});
+
+	function hintViewport(viewport) {
+		viewport.bottom = 0;
+
+		viewport.left = Math.floor(viewport.left);
+		viewport.right = Math.ceil(viewport.right);
+		viewport.top = Math.ceil(viewport.top);
+
+		axisY.hintViewport(viewport);
+	}
+
+	let scroller = new Scroller({
+		svgHelper,
+		onViewportUpdate(viewport) {
+			hintViewport(viewport);
+
+			animation.moveViewport(viewport);
+		},
+	});
+
+	scrollerDiv.appendChild(scroller.getElement());
+	scroller.setState({
+		lines,
+	});
+	scroller.onShown();
+
+	{
+		let viewport = scroller.getViewport();
 		hintViewport(viewport);
 
-		animation.moveViewport(viewport);
-	},
-});
+		animation.setViewport(viewport);
+		axisX.setState({ viewport });
+		axisY.setState({ viewport });
 
-scrollerDiv.appendChild(scroller.getElement());
-scroller.setState({
-	lines,
-});
-scroller.onShown();
+		lines.forEach(line => {
+			let { _chartLine,
+			      points,
+			    } = line;
 
-{
-	let viewport = scroller.getViewport();
-	hintViewport(viewport);
-
-	animation.setViewport(viewport);
-	axisX.setState({ viewport });
-	axisY.setState({ viewport });
-
-	lines.forEach(line => {
-		let { _chartLine,
-		      points,
-		    } = line;
-
-		_chartLine.setState({
-			points,
-			viewport,
-		});
-	});
-
-	lines.forEach(line => {
-		let lineId = line.id;
-
-		let label = document.createElement('label');
-
-		let checkbox = document.createElement('input');
-		checkbox.setAttribute('type', 'checkbox');
-		checkbox.checked = true;
-
-		checkbox.addEventListener('change', () => {
-			let toggle = checkbox.checked;
-
-			scroller.toggleLine(lineId, toggle);
-
-			line._chartLine.toggle(toggle);
+			_chartLine.setState({
+				points,
+				viewport,
+			});
 		});
 
-		label.appendChild(checkbox);
+		lines.forEach(line => {
+			let lineId = line.id;
 
-		label.appendChild(document.createTextNode(' ' + line._name));
+			let label = document.createElement('label');
 
-		lineTogglesDiv.appendChild(label);
-	});
+			let checkbox = document.createElement('input');
+			checkbox.setAttribute('type', 'checkbox');
+			checkbox.checked = true;
+
+			checkbox.addEventListener('change', () => {
+				let toggle = checkbox.checked;
+
+				scroller.toggleLine(lineId, toggle);
+
+				line._chartLine.toggle(toggle);
+			});
+
+			label.appendChild(checkbox);
+
+			label.appendChild(document.createTextNode(' ' + line._name));
+
+			lineTogglesDiv.appendChild(label);
+		});
+	}
 }
-
-//
-
-/*let chartLineG = new ChartLine({
-	svg,
-	svgHelper,
-	viewBox: {
-		width: 400,
-		height: 300,
-	},
-	className: 'chart-line-g',
-});
-
-chartLineG.setState({
-	points,
-	viewport: {
-		left: 0,
-		right: 142,
-		bottom: 0,
-		top: 100,
-	},
-});*/
