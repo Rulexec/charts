@@ -59,6 +59,8 @@ let config = {
 								targets: {
 									'ie': 11
 								},
+								useBuiltIns: 'entry',
+								corejs: '2.6.5',
 								modules: false,
 								loose: true,
 							}]]
