@@ -5,6 +5,7 @@ export default Animation;
 function Animation(options) {
 	let onViewportMoveStartCallbacks = [];
 	let onViewportUpdateCallbacks = [];
+	let onViewportFinishCallbacks = [];
 	let animationFrames = [];
 
 	let animationRunning = false;
@@ -41,6 +42,9 @@ function Animation(options) {
 
 		onViewportUpdateCallbacks.push({ opts, callback });
 	};
+	this.onViewportFinish = (opts, callback) => {
+		onViewportFinishCallbacks.push({ opts, callback });
+	};
 	this.animationFrame = (opts, callback) => {
 		if (typeof opts === 'function') {
 			callback = opts;
@@ -54,6 +58,8 @@ function Animation(options) {
 		};
 
 		animationFrames.push(obj);
+
+		startAnimation();
 
 		return {
 			cancel() {
@@ -164,7 +170,9 @@ function Animation(options) {
 
 			let elapsed = time - animationViewportStartTime;
 
-			if (elapsed >= VIEWPORT_ANIMATION_DURATION) {
+			let isFinished = elapsed >= VIEWPORT_ANIMATION_DURATION;
+
+			if (isFinished) {
 				viewport.left = newLeft;
 				viewport.right = newRight;
 				viewport.bottom = newBottom;
@@ -190,6 +198,16 @@ function Animation(options) {
 
 				callback({ viewport, state });
 			});
+
+			if (isFinished) {
+				onViewportFinishCallbacks.forEach(({ opts, callback }, i) => {
+					let state;
+
+					if (opts && opts.frameState) state = opts.frameState.getState(frameIndex);
+
+					callback({ viewport, state });
+				});
+			}
 		}
 	}
 }

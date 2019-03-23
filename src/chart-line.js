@@ -458,14 +458,20 @@ function ChartLine(options) {
 
 	let frameState = animation.createFrameState(() => {
 		return {
+			viewportAnimationGoing: false,
 			needRedrawLines: false,
 		};
 	});
 
 	animation.onViewportUpdate({ frameState }, ({ state }) => {
 		state.needRedrawLines = true;
+		state.viewportAnimationGoing = true;
 
 		if (!animationRunning) startAnimation();
+	});
+
+	animation.onViewportFinish({ frameState }, ({ state }) => {
+		state.viewportAnimationGoing = false;
 	});
 
 	function startAnimation() {
@@ -487,7 +493,7 @@ function ChartLine(options) {
 				redrawLines({ viewport });
 			}
 
-			let isAnimationGoing = !!animationPointsStartTime || !!animationToggleStartTime;
+			let isAnimationGoing = state.viewportAnimationGoing || !!animationPointsStartTime || !!animationToggleStartTime;
 
 			if (!isAnimationGoing) {
 				animationRunning.cancel();

@@ -332,7 +332,7 @@ function AxisX(options) {
 		labelsToRemove.forEach(label => {
 			g.removeChild(label.node);
 
-			svgHelper.freeElement(label.node);
+			freeTextNode(label.node);
 		});
 
 		if (labelsToRemove.length) {
@@ -437,7 +437,7 @@ function AxisX(options) {
 		labelsToRemove.forEach(label => {
 			g.removeChild(label.node);
 
-			svgHelper.freeElement(label.node);
+			freeTextNode(label.node);
 		});
 
 		if (labelsToRemove.length) {
@@ -476,5 +476,10 @@ function AxisX(options) {
 		g.appendChild(node);
 
 		return node;
+	}
+	function freeTextNode(node) {
+		node.style = '';
+
+		svgHelper.freeElement(node);
 	}
 }

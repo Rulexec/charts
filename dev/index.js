@@ -173,7 +173,7 @@ let axisY = new AxisY({
 let lines = [];
 
 {
-	let data = tgData[4];
+	let data = tgData[0];
 
 	let xColumn = data.columns[0];
 
