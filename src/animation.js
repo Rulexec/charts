@@ -68,6 +68,14 @@ function Animation(options) {
 	this.setViewport = function(newViewport) { viewport = newViewport; };
 
 	this.moveViewport = function(newViewport) {
+		let isSameViewport =
+			    viewport.left === newViewport.left
+			 && viewport.right === newViewport.right
+			 && viewport.bottom === newViewport.bottom
+			 && viewport.top === newViewport.top;
+
+		if (isSameViewport) return;
+
 		animationViewportStartTime = 0;
 		animationOldViewport = viewport;
 		animationNewViewport = {

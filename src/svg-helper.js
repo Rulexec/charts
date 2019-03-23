@@ -19,7 +19,7 @@ function SvgHelper() {
 		if (pool && pool.length) {
 			let tree = pool.pop();
 
-			if (modify) tree = modify(tree);
+			if (modify) tree = modify(tree) || tree;
 
 			return tree;
 		}

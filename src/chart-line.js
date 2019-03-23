@@ -559,7 +559,7 @@ function ChartLine(options) {
 
 				g.style.opacity = animationToggleOpacity;
 			} else {
-				let t = elapsed / VIEWPORT_ANIMATION_DURATION;
+				let t = elapsed / TOGGLE_ANIMATION_DURATION;
 				t = t * (2 - t);
 
 				animationToggleOpacity = animationToggleOldOpacity + (animationToggleNewOpacity - animationToggleOldOpacity) * t;

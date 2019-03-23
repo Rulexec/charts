@@ -18,11 +18,20 @@ style.appendChild(document.createTextNode(
 #charts_container > svg {
 	width: 100%;
 	height: 100%;
+
+	font-family: sans-serif;
 }
 
 #charts_container > svg .y-axis .line {
-	/*stroke: #dedede;*/
-	stroke: black;
+	stroke: #dadfe2;
+}
+#charts_container > svg .y-axis .label {
+	fill: #242a2d;
+	font-size: 14px;
+}
+#charts_container > svg .x-axis text {
+	fill: #242a2d;
+	font-size: 14px;
 }
 
 #scroller_container {
@@ -225,6 +234,10 @@ lines.forEach(line => {
 function hintViewport(viewport) {
 	viewport.bottom = 0;
 
+	viewport.left = Math.floor(viewport.left);
+	viewport.right = Math.ceil(viewport.right);
+	viewport.top = Math.ceil(viewport.top);
+
 	axisY.hintViewport(viewport);
 }
 
@@ -232,10 +245,6 @@ let scroller = new Scroller({
 	svgHelper,
 	onViewportUpdate(viewport) {
 		hintViewport(viewport);
-
-		/*lines.forEach(({ _chartLine }) => {
-			_chartLine.moveViewport(viewport);
-		});*/
 
 		animation.moveViewport(viewport);
 	},

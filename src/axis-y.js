@@ -69,7 +69,22 @@ function AxisY(options) {
 			line.setAttribute('y2', '0');
 			lineG.appendChild(line);
 
+			let textNode = svgHelper.createElement('text');
+			textNode.setAttribute('class', 'label');
+			textNode.setAttribute('text-anchor', 'left');
+			textNode.setAttribute('alignment-baseline', 'bottom');
+			textNode.setAttribute('x', '0');
+			textNode.setAttribute('y', '-5');
+			textNode.textContent = chartY | 0;
+			lineG.appendChild(textNode);
+
+			lineG._reuse = {
+				textNode,
+			};
+
 			return lineG;
+		}, lineG => {
+			lineG._reuse.textNode.textContent = chartY | 0;
 		});
 
 		g.appendChild(lineG);
@@ -78,7 +93,9 @@ function AxisY(options) {
 			y: chartY,
 			node: lineG,
 			setPxY(y) {
-				lineG.setAttribute('transform', `translate(0 ${(HEIGHT - y) | 0}.5)`);
+				y = HEIGHT - y;
+				y = Math.round(y * 10) / 10;
+				lineG.setAttribute('transform', `translate(0 ${y})`);
 			},
 		};
 	}

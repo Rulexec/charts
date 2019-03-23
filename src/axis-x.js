@@ -13,6 +13,7 @@ function AxisX(options) {
 	    } = options;
 
 	let g = svgHelper.createElement('g');
+	g.setAttribute('class', 'x-axis');
 	svg.appendChild(g);
 
 	g.setAttribute('transform', `translate(${LEFT} ${TOP})`);
