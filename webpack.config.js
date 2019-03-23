@@ -8,15 +8,14 @@ const SRC_PATH = path.resolve(__dirname, 'src');
 const DEV_SERVER_PORT = process.env.WEBPACK_DEV_PORT || 9000;
 
 const IS_DEV_SERVER = path.basename(require.main.filename) === 'webpack-dev-server.js';
+const BUILD_DEV_MAIN = IS_DEV_SERVER || process.env.BUILD_DEV_MAIN === '1';
 const PUBLIC_HOST = process.env.PUBLIC_HOST || 'localhost';
 const IS_PLAYGROUND = process.env.PLAYGROUND === '1';
 
 let entry = {
 };
 
-console.log(path.basename(require.main.filename));
-
-if (IS_DEV_SERVER) {
+if (BUILD_DEV_MAIN) {
 	entry.main = path.resolve(__dirname, 'dev/index.js');
 }
 
@@ -27,7 +26,7 @@ let config = {
 	entry,
 	output: (() => {
 		let output = {
-			filename: '[name]_[contenthash].js',
+			filename: '[name].js',
 			path: path.resolve(__dirname, 'dist'),
 		};
 
@@ -51,7 +50,7 @@ let config = {
 			if (MODE === 'production') {
 				// Use Babel only for production
 
-				/*rules.push({
+				rules.push({
 					test: /\.js$/,
 					use: [{
 						loader: 'babel-loader',
@@ -65,7 +64,7 @@ let config = {
 							}]]
 						}
 					}],
-				});*/
+				});
 			}
 
 			return rules;
